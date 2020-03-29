@@ -1,6 +1,7 @@
 from pydantic import BaseSettings
 
 
+# Attributes are automatically read from the environment variables.
 class Settings(BaseSettings):
     development: bool = True
 
@@ -22,9 +23,5 @@ class Settings(BaseSettings):
     highlight = False
     highlight_max: int = 10  # Maximum number of paragraphs to highlight.
     highlight_device: str = 'cuda:1'
-
-    class Config:
-        env_file = '.env'
-
 
 settings = Settings()

@@ -1,20 +1,19 @@
-import dateparser
 import time
+from typing import List
 
+import dateparser
 from fastapi import APIRouter
-from app.models import Article, QueryFacet
+
+from app.models import Article
 from app.services.highlighter import highlighter
 from app.services.ranker import ranker
 from app.services.searcher import searcher
 from app.settings import settings
-from typing import List
-
 
 router = APIRouter()
 
-
 @router.get('/search', response_model=List[Article])
-async def get_search(query: str, facets: List[QueryFacet] = []):
+async def get_search(query: str):
     searcher_hits = searcher.search(query)
     t5_inputs = [
         f'Query: {query} Document: {hit.contents[:5000]} Relevant:'
@@ -54,7 +53,6 @@ async def get_search(query: str, facets: List[QueryFacet] = []):
             # Only one paragraph per document is highlighted for now.
             result.paragraphs = [new_paragraph]
             result.highlights = [highlights]
-
         print(f'Time to highlight: {time.time() - highlight_time}')
 
     return deduped_results
@@ -62,21 +60,15 @@ async def get_search(query: str, facets: List[QueryFacet] = []):
 
 def build_article(hit, score):
     doc = hit.lucene_document
-    authors = [field.stringValue() for field in doc.getFields('authors')]
-    try:
-        year = dateparser.parse(doc.get('publish_time')).year
-    except:
-        year = None
-
     return Article(id=hit.docid,
                    title=doc.get('title'),
                    doi=doc.get('doi'),
                    source=doc.get('source_x'),
-                   authors=authors,
                    abstract=doc.get('abstract'),
                    journal=doc.get('journal'),
-                   year=year,
+                   authors=[field.stringValue() for field in doc.getFields('authors')],
                    url=doc.get('url') if doc.get('url') else 'https://www.semanticscholar.org/',
                    publish_time=doc.get('publish_time'),
+                   year=doc.get('year'),
                    score=score,
                    paragraphs=[hit.contents])
